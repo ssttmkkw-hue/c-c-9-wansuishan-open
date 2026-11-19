@@ -1,5 +1,9 @@
 # Round 1 — walkable park, three live shows
 
+## Commit
+
+- `894f384` feat: walkable park with three looping shows
+
 ## What shipped
 
 A Vite + TypeScript + three.js `0.170.0` park at `http://127.0.0.1:5199/`.

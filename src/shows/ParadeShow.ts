@@ -70,6 +70,10 @@ export class ParadeShow {
   heading = Math.PI;
   billLive = false;
   billState = '午时';
+
+  setLights(on: boolean) {
+    this.spot.visible = on && this.billLive;
+  }
   current: LineCue | null = null;
   speakerName = '';
   private readonly actors: Actor[] = [];

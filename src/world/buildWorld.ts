@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { lambert, makeSpeckle } from '../puppet/materials';
 import { LOTS, localToWorld, type LotDef } from '../park/layout';
 import type { Aabb, Ellipse } from '../park/collide';
@@ -8,6 +9,7 @@ export interface ParkWorld {
   ellipses: Ellipse[];
   flags: THREE.Mesh[];
   water: THREE.Mesh;
+  lanterns: THREE.Mesh[];
 }
 
 function board(parent: THREE.Object3D, w: number, h: number, d: number, x: number, y: number, z: number, color: number) {
@@ -175,20 +177,57 @@ export function buildWorld(scene: THREE.Scene): ParkWorld {
     flags.push(flag);
   });
 
-  // Lanterns along the avenue.
+  const lanternMat = new THREE.MeshLambertMaterial({ color: 0xffb15a, emissive: 0xff7a2a, emissiveIntensity: 0.55 });
+  const lanterns: THREE.Mesh[] = [];
   for (let i = 0; i < 8; i++) {
     const z = 28 - i * 5;
     const x = i % 2 === 0 ? -2.6 : 2.6;
     board(scene, 0.06, 2.4, 0.06, x, 1.2, z, 0x4a3428);
-    const lamp = new THREE.Mesh(
-      new THREE.SphereGeometry(0.16, 8, 6),
-      new THREE.MeshLambertMaterial({ color: 0xffb15a, emissive: 0xff7a2a, emissiveIntensity: 0.7 }),
-    );
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), lanternMat);
     lamp.position.set(x, 2.45, z);
     scene.add(lamp);
+    lanterns.push(lamp);
   }
+  scene.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh) || Array.isArray(obj.material)) return;
+    const mat = obj.material as THREE.MeshLambertMaterial;
+    if (mat.emissive && mat.emissive.getHex() !== 0 && !lanterns.includes(obj)) lanterns.push(obj);
+  });
 
-  return { boxes, ellipses, flags, water };
+  mergeStill(scene, new Set<THREE.Object3D>([water, rim, ...flags, ...lanterns]));
+
+  return { boxes, ellipses, flags, water, lanterns };
+}
+
+function mergeStill(scene: THREE.Scene, keep: Set<THREE.Object3D>) {
+  scene.updateMatrixWorld(true);
+  const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
+  const drop: THREE.Mesh[] = [];
+  scene.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh) || obj instanceof THREE.InstancedMesh) return;
+    if (keep.has(obj)) return;
+    const mat = obj.material;
+    if (!mat || Array.isArray(mat) || mat.transparent) return;
+    if ((mat as THREE.MeshLambertMaterial).map) return;
+    const geo = obj.geometry.clone();
+    geo.applyMatrix4(obj.matrixWorld);
+    const list = buckets.get(mat) ?? [];
+    list.push(geo);
+    buckets.set(mat, list);
+    drop.push(obj);
+  });
+  for (const mesh of drop) mesh.parent?.remove(mesh);
+  for (const [mat, geos] of buckets) {
+    const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+    if (!merged) {
+      for (const geo of geos) scene.add(new THREE.Mesh(geo, mat));
+      continue;
+    }
+    scene.add(new THREE.Mesh(merged, mat));
+    if (geos.length > 1) {
+      for (const geo of geos) geo.dispose();
+    }
+  }
 }
 
 function buildGate(scene: THREE.Scene, boxes: Aabb[]) {

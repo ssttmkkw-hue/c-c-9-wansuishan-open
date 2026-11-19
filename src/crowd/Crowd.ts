@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Puppet, type Drive, type Gesture } from '../puppet/Puppet';
 import { WALK_LOOP, LOTS, localToWorld, type LotDef } from '../park/layout';
 import { resolve, type Aabb, type Ellipse } from '../park/collide';
+import { lambert } from '../puppet/materials';
 import { wrapAngle } from '../util';
 
 const ROBES = [0x8c3b3b, 0x2f5d50, 0x3d4f7c, 0xc4893d, 0x6d4a6a, 0x3f6b3a, 0xa35b3a, 0x245c62, 0x7a3e4a, 0x4a5568, 0x8a4a2a, 0x35586a];
@@ -18,7 +19,8 @@ interface Guest {
   timer: number;
   burst: number;
   burstKind: 'clap' | 'raise';
-  look: THREE.Vector3 | null;
+      look: THREE.Vector3 | null;
+  tint: THREE.Color;
   crew: boolean;
   lane: number;
   paradeIndex: number;
@@ -40,6 +42,12 @@ export class Crowd {
   private readonly ellipses: Ellipse[];
   private readonly focus = new Map<string, THREE.Vector3>();
   private parade = { active: false, x: 0, z: 0, yaw: 0 };
+  private lodDistance = 14;
+  private readonly lodBody: THREE.InstancedMesh;
+  private readonly lodHead: THREE.InstancedMesh;
+  private readonly lodDummy = new THREE.Object3D();
+  fullCount = 0;
+  farCount = 0;
 
   constructor(scene: THREE.Scene, boxes: Aabb[], ellipses: Ellipse[]) {
     this.boxes = boxes;
@@ -97,6 +105,19 @@ export class Crowd {
         this.snapSlot(g);
       }
     }
+
+    const n = this.guests.length;
+    this.lodBody = new THREE.InstancedMesh(new THREE.BoxGeometry(0.36, 0.7, 0.22), lambert(0xffffff), n);
+    this.lodHead = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), lambert(0xf0c3a0), n);
+    this.guests.forEach((g, i) => {
+      this.lodBody.setColorAt(i, g.tint);
+      this.lodHead.setColorAt(i, new THREE.Color(0xf0c3a0));
+    });
+    scene.add(this.lodBody, this.lodHead);
+  }
+
+  setLodDistance(distance: number) {
+    this.lodDistance = distance;
   }
 
   setParade(active: boolean, x: number, z: number, yaw: number) {
@@ -123,7 +144,9 @@ export class Crowd {
     }
   }
 
-  update(dt: number, player: THREE.Vector3, showsHot: Map<string, boolean>) {
+  update(dt: number, player: THREE.Vector3, showsHot: Map<string, boolean>, cameraPos?: THREE.Vector3) {
+    this.fullCount = 0;
+    this.farCount = 0;
     this.syncParade();
     for (const g of this.guests) {
       if (g.mode === 'walk' && !g.crew && Math.random() < dt * 0.08) {
@@ -227,9 +250,32 @@ export class Crowd {
         lookAt: look,
         prop: 'none',
       };
-      g.puppet.update(dt, drive);
+      const far = cameraPos ? Math.hypot(g.x - cameraPos.x, g.z - cameraPos.z) > this.lodDistance : false;
+      g.puppet.group.visible = !far;
+      if (!far) g.puppet.update(dt, drive);
     }
     this.relax();
+    this.guests.forEach((g, i) => {
+      const far = !g.puppet.group.visible;
+      if (far) this.farCount++;
+      else this.fullCount++;
+      this.writeLod(g, i, far);
+    });
+    this.lodBody.instanceMatrix.needsUpdate = true;
+    this.lodHead.instanceMatrix.needsUpdate = true;
+    if (this.lodBody.instanceColor) this.lodBody.instanceColor.needsUpdate = true;
+  }
+
+  private writeLod(g: Guest, index: number, far: boolean) {
+    const s = far ? 1 : 0;
+    this.lodDummy.position.set(g.x, 0.86, g.z);
+    this.lodDummy.rotation.set(0, g.yaw, 0);
+    this.lodDummy.scale.set(s, s, s);
+    this.lodDummy.updateMatrix();
+    this.lodBody.setMatrixAt(index, this.lodDummy.matrix);
+    this.lodDummy.position.set(g.x, 1.46, g.z);
+    this.lodDummy.updateMatrix();
+    this.lodHead.setMatrixAt(index, this.lodDummy.matrix);
   }
 
   private make(scene: THREE.Scene, x: number, z: number, yaw: number, mode: Guest['mode'], i: number, crew = false): Guest {
@@ -257,6 +303,7 @@ export class Crowd {
       burst: 0,
       burstKind: 'clap',
       look: null,
+      tint: new THREE.Color(ROBES[i % ROBES.length]),
       crew,
       lane: ((i % 5) - 2) * 0.55,
       paradeIndex: -1,
@@ -332,8 +379,8 @@ export class Crowd {
           const dx = g.x - o.x;
           const dz = g.z - o.z;
           const d = Math.hypot(dx, dz) || 0.0001;
-          if (d < 0.98) {
-            const push = (0.98 - d) * 0.45;
+          if (d < 1.05) {
+            const push = (1.05 - d) * 0.42;
             g.x += (dx / d) * push;
             g.z += (dz / d) * push;
           }

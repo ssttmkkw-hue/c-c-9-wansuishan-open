@@ -37,6 +37,11 @@ export class ActorShow {
   speakerName = '';
   billLive = true;
   billState = '演出中';
+
+  setLights(on: boolean) {
+    this.spot.visible = on;
+    this.fill.visible = on;
+  }
   private viewer: THREE.Vector3 | null = null;
   private readonly fill: THREE.PointLight;
   private readonly cloth: ShadowCloth | null;

@@ -26,6 +26,10 @@ export interface ParkHook {
   watch: (lotId: string, shot?: ShotKind) => void;
   listShows: () => ShowInfo[];
   fps: number;
+  quality: string;
+  draws: number;
+  tris: number;
+  lod: { full: number; far: number };
   player: { x: number; y: number; z: number; yaw: number };
   setMuted: (muted: boolean) => void;
   frame: (which: string) => void;

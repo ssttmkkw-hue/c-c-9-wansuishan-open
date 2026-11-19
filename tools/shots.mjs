@@ -55,6 +55,78 @@ const info = async () =>
     sub: document.querySelector('.zh')?.textContent || '',
   }));
 
+if (round === '3') {
+  await page.goto(`${base}?diag=1`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__park && window.__park.ready === true, null, { timeout: 20000 });
+  await page.evaluate(() => window.__park.setMuted(true));
+  await page.evaluate(() => {
+    window.__park.setTime(17.5 * 3600);
+    window.__park.frame('overview');
+  });
+  await page.waitForTimeout(2500);
+  const perf = await page.evaluate(() => ({
+    fps: Math.round(window.__park.fps),
+    draws: window.__park.draws,
+    tris: window.__park.tris,
+    quality: window.__park.quality,
+    lod: window.__park.lod,
+    shows: window.__park.listShows().length,
+  }));
+  console.log('perf', JSON.stringify(perf));
+  await shot('overview');
+  await shot('diag');
+
+  for (const id of ['stage', 'shadow']) {
+    await page.evaluate((lot) => window.__park.watch(lot, 'wide'), id);
+    await page.waitForTimeout(700);
+    console.log(id, JSON.stringify(await info()));
+    await shot(id);
+  }
+
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const phoneErrors = [];
+  phone.on('pageerror', (err) => phoneErrors.push(`pageerror: ${err.message}`));
+  phone.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (/GPU stall|ReadPixels|swiftshader/i.test(text)) return;
+    phoneErrors.push(`console: ${text}`);
+  });
+  await phone.goto(base, { waitUntil: 'domcontentloaded' });
+  await phone.waitForFunction(() => window.__park && window.__park.ready === true, null, { timeout: 20000 });
+  await phone.evaluate(() => window.__park.setMuted(true));
+  await phone.waitForTimeout(400);
+  const before = await phone.evaluate(() => ({ ...window.__park.player }));
+  const stick = await phone.locator('#stick').boundingBox();
+  if (!stick) phoneErrors.push('joystick missing');
+  else {
+    const cx = stick.x + stick.width / 2;
+    const cy = stick.y + stick.height / 2;
+    await phone.mouse.move(cx, cy);
+    await phone.mouse.down();
+    await phone.mouse.move(cx, cy - 36);
+    await phone.waitForTimeout(500);
+    await phone.mouse.up();
+  }
+  const after = await phone.evaluate(() => ({ ...window.__park.player }));
+  console.log('mobile move', JSON.stringify({ before, after }));
+  if (Math.hypot(after.x - before.x, after.z - before.z) < 0.2) phoneErrors.push('joystick did not move the player');
+  const canvas = await phone.locator('canvas').first().boundingBox();
+  if (canvas) {
+    await phone.mouse.move(canvas.x + canvas.width * 0.72, canvas.y + canvas.height * 0.4);
+    await phone.mouse.down();
+    await phone.mouse.move(canvas.x + canvas.width * 0.72 + 48, canvas.y + canvas.height * 0.4 + 10);
+    await phone.mouse.up();
+  }
+  await phone.evaluate(() => window.__park.watch('market', 'wide'));
+  await phone.waitForTimeout(800);
+  const mobileFile = `${outDir}/c9-r3-mobile.png`;
+  await phone.screenshot({ path: mobileFile });
+  console.log('wrote', mobileFile);
+  errors.push(...phoneErrors);
+  await phone.close();
+}
+
 if (round === '2') {
   await page.evaluate(() => {
     window.__park.setTime(1680);

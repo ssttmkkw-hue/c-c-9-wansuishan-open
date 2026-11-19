@@ -1,13 +1,25 @@
 export class AudioBus {
   muted = true;
+  private duck = 1;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private murmur: GainNode | null = null;
 
   setMuted(muted: boolean) {
     this.muted = muted;
+    this.applyGain();
+  }
+
+  /** 1 is full bed, lower values duck music and hits while a show camera is on. */
+  setDuck(amount: number) {
+    this.duck = Math.max(0, Math.min(1, amount));
+    this.applyGain();
+  }
+
+  private applyGain() {
     if (this.master && this.ctx) {
-      this.master.gain.setTargetAtTime(muted ? 0 : 0.22, this.ctx.currentTime, 0.05);
+      const target = this.muted ? 0 : 0.22 * this.duck;
+      this.master.gain.setTargetAtTime(target, this.ctx.currentTime, 0.08);
     }
   }
 
@@ -55,7 +67,7 @@ export class AudioBus {
     if (!Ctor) return;
     this.ctx = new Ctor();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.22;
+    this.master.gain.value = this.muted ? 0 : 0.22 * this.duck;
     this.master.connect(this.ctx.destination);
 
     const seconds = 2;

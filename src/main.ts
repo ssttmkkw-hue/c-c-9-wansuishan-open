@@ -50,7 +50,7 @@ const crowd = new Crowd(scene, world.boxes, world.ellipses);
 const audio = new AudioBus();
 
 const player = new Puppet({ robe: 0x2e4a7a, pants: 0x1d2430, hair: 0x3a2a22, sash: 0xf0d7a4, scale: 1, seed: 2 });
-const playerPos = new THREE.Vector3(0, 0, 35);
+const playerPos = new THREE.Vector3(0, 0, 31.2);
 let playerYaw = Math.PI;
 player.group.position.copy(playerPos);
 player.group.rotation.y = playerYaw;
@@ -60,6 +60,8 @@ const keys = new Set<string>();
 let camYaw = Math.PI;
 let pitch = 0.42;
 let pointerDown = false;
+let lastPX = 0;
+let lastPY = 0;
 let watchId: string | null = null;
 let watchShot: ShotKind | 'cycle' = 'cycle';
 let watchLock = false;
@@ -81,6 +83,8 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
   pointerDown = true;
+  lastPX = e.clientX;
+  lastPY = e.clientY;
   renderer.domElement.setPointerCapture(e.pointerId);
 });
 renderer.domElement.addEventListener('pointerup', () => {
@@ -88,20 +92,25 @@ renderer.domElement.addEventListener('pointerup', () => {
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!pointerDown) return;
-  camYaw -= e.movementX * 0.005;
-  pitch = clamp(pitch + e.movementY * 0.003, 0.18, 1.15);
-  if (Math.abs(e.movementX) + Math.abs(e.movementY) > 4) cancelWatch();
+  const dx = e.clientX - lastPX;
+  const dy = e.clientY - lastPY;
+  lastPX = e.clientX;
+  lastPY = e.clientY;
+  camYaw -= dx * 0.005;
+  pitch = clamp(pitch + dy * 0.003, 0.18, 1.15);
+  if (Math.abs(dx) + Math.abs(dy) > 4) cancelWatch();
 });
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  applyQuality();
 });
 
 function movingInput() {
-  return ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some((k) => keys.has(k));
+  const stick = Math.hypot(hud.move.x, hud.move.y) > 0.18;
+  return stick || ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some((k) => keys.has(k));
 }
 
 function cancelWatch() {
@@ -184,6 +193,10 @@ const hook: ParkHook = {
   get fps() {
     return fps;
   },
+  quality: 'med',
+  draws: 0,
+  tris: 0,
+  lod: { full: 0, far: 0 },
   player: playerInfo,
   setMuted(muted: boolean) {
     audio.setMuted(muted);
@@ -201,6 +214,22 @@ const hook: ParkHook = {
   },
 };
 window.__park = hook;
+
+const params = new URLSearchParams(location.search);
+const diagOn = params.get('diag') === '1';
+const qParam = params.get('q');
+let quality: 'high' | 'med' | 'low' = qParam === 'high' || qParam === 'low' ? qParam : 'med';
+const qualityLock = qParam === 'high' || qParam === 'low' || qParam === 'med';
+let lowFps = 0;
+
+function applyQuality() {
+  const ratio = quality === 'high' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1;
+  renderer.setPixelRatio(ratio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  crowd.setLodDistance(quality === 'high' ? 22 : quality === 'med' ? 14 : 9);
+  hook.quality = quality;
+}
+applyQuality();
 
 let last = performance.now();
 renderer.setAnimationLoop((now) => {
@@ -232,6 +261,10 @@ renderer.setAnimationLoop((now) => {
   if (keys.has('KeyA') || keys.has('ArrowLeft')) {
     mx -= rx;
     mz -= rz;
+  }
+  if (Math.hypot(hud.move.x, hud.move.y) > 0.12) {
+    mx += fx * -hud.move.y + rx * hud.move.x;
+    mz += fz * -hud.move.y + rz * hud.move.x;
   }
   const mag = Math.hypot(mx, mz);
   if (mag > 0) {
@@ -282,8 +315,13 @@ renderer.setAnimationLoop((now) => {
     }
   }
   const hot = new Map<string, boolean>();
-  for (const show of shows) hot.set(show.lotId, true);
-  crowd.update(dt, playerPos, hot);
+  for (const show of shows) {
+    hot.set(show.lotId, show.billLive);
+    const nearLight = camera.position.distanceTo(show.origin) < (quality === 'high' ? 48 : 22);
+    const lit = show.billLive && (quality === 'high' || watchId === show.lotId || (quality === 'med' && nearLight));
+    show.setLights(lit);
+  }
+  crowd.update(dt, playerPos, hot, camera.position);
 
   let lookTarget: THREE.Vector3 | null = null;
   let bestLook = 64;
@@ -375,6 +413,9 @@ renderer.setAnimationLoop((now) => {
     speaker: line ? active?.speakerName ?? '' : '',
     zh: line?.text ?? (nearest ? '' : ''),
     en: line?.en ?? '',
+    now: nowLine(watched, nearest),
+    marks: shows.map((s) => ({ x: s.origin.x, z: s.origin.z, live: s.billLive })),
+    player: { x: playerPos.x, z: playerPos.z, yaw: playerYaw },
     tags,
     camera,
     width: window.innerWidth,
@@ -382,7 +423,17 @@ renderer.setAnimationLoop((now) => {
   });
 
   const distGate = Math.hypot(playerPos.x, playerPos.z - 16);
+  audio.setDuck(watched ? 0.38 : 1);
   audio.setMurmur(clamp(1 - distGate / 28, 0, 1) * 0.5 + (nearest && nearest.d < 10 ? 0.4 : 0));
+  applySky(parkTime);
+  if (!qualityLock && hook.ready) {
+    if (fps < 16) lowFps += dt;
+    else lowFps = Math.max(0, lowFps - dt);
+    if (lowFps > 2.4 && quality !== 'low') {
+      quality = 'low';
+      applyQuality();
+    }
+  }
 
   for (const row of lotsInfo) {
     row.show = showByLot(row.id)?.title ?? null;
@@ -394,7 +445,50 @@ renderer.setAnimationLoop((now) => {
 
   renderer.render(scene, camera);
   hook.ready = true;
+  hook.quality = quality;
+  hook.draws = renderer.info.render.calls;
+  hook.tris = renderer.info.render.triangles;
+  hook.lod.full = crowd.fullCount;
+  hook.lod.far = crowd.farCount;
+  hud.setDiag(diagOn
+    ? `${fps.toFixed(0)} fps\nshows ${shows.filter((s) => s.billLive).length}/${shows.length}\ndraws ${hook.draws}\ntris ${hook.tris}\nlod ${crowd.fullCount} full / ${crowd.farCount} far\n${quality}`
+    : null);
 });
+
+function nowLine(
+  watched: (typeof shows)[number] | null,
+  nearest: { show: (typeof shows)[number]; d: number } | null,
+) {
+  if (watched) return `正在看 · ${lotById(watched.lotId).name}《${watched.title}》`;
+  if (nearest) return `现在演出 · ${lotById(nearest.show.lotId).name}《${nearest.show.title}》`;
+  return '园内正在演出';
+}
+
+const skyTint = new THREE.Color();
+function applySky(time: number) {
+  const h = (((time % 86400) + 86400) % 86400) / 3600;
+  let sunI = 1.35;
+  let lampI = 0.45;
+  if (h >= 16 && h < 19) {
+    skyTint.set(0xe8925a);
+    sunI = 1.05;
+    lampI = 1;
+  } else if (h >= 19 || h < 6) {
+    skyTint.set(0x1c2838);
+    sunI = 0.22;
+    lampI = 1.4;
+  } else {
+    skyTint.set(0xf3d2a6);
+  }
+  (scene.background as THREE.Color).copy(skyTint);
+  if (scene.fog) (scene.fog as THREE.Fog).color.copy(skyTint);
+  sun.intensity = sunI;
+  sun.color.set(h >= 16 && h < 19 ? 0xffc090 : 0xfff4dd);
+  for (const lamp of world.lanterns) {
+    const mat = lamp.material as THREE.MeshLambertMaterial;
+    mat.emissiveIntensity = lampI;
+  }
+}
 
 function nearestLive(x: number, z: number) {
   let best: { show: (typeof shows)[number]; d: number } | null = null;
@@ -408,8 +502,8 @@ function nearestLive(x: number, z: number) {
 
 function nudgeCamera(pos: THREE.Vector3, look: THREE.Vector3) {
   for (const b of world.boxes) {
-    const pad = 0.3;
-    if (pos.y > 3.6) continue;
+    const pad = 0.5;
+    if (pos.y > 5.2) continue;
     if (pos.x <= b.minX - pad || pos.x >= b.maxX + pad || pos.z <= b.minZ - pad || pos.z >= b.maxZ + pad) continue;
     const cx = (b.minX + b.maxX) / 2;
     const cz = (b.minZ + b.maxZ) / 2;
@@ -441,7 +535,7 @@ function frameShow(show: ActorShow | ParadeShow, shot: ShotKind) {
   if (shot === 'close') {
     const look = focus.clone();
     look.y += 0.12;
-    const pos = look.clone().addScaledVector(face, 1.62);
+    const pos = look.clone().addScaledVector(face, 1.78);
     return { pos, look };
   }
   if (show instanceof ParadeShow) {

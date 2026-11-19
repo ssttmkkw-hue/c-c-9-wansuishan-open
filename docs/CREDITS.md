@@ -23,4 +23,4 @@ See [RESEARCH.md](RESEARCH.md). Notable public projects: Generative Agents / Sma
 
 ## Original content
 
-Park layout, procedural puppets, scores, dialogue, music and textures authored for this repository are original. The name "万岁山" refers to the *idea* of a park where performances run in every corner; this is not an official product of any real park operator.
+Park layout, procedural puppets, scores, dialogue, music, the shadow-play cloth, parade float, and textures authored for this repository are original. No outside character art or audio files are shipped. The name "万岁山" refers to the *idea* of a park where performances run in every corner; this is not an official product of any real park operator.

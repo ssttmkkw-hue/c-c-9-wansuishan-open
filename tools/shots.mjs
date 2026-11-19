@@ -55,6 +55,57 @@ const info = async () =>
     sub: document.querySelector('.zh')?.textContent || '',
   }));
 
+if (round === '2') {
+  await page.evaluate(() => {
+    window.__park.setTime(1680);
+    window.__park.watch('market', 'close');
+  });
+  await page.waitForTimeout(900);
+  const face = await page.evaluate(() => {
+    const insp = window.__park.inspect();
+    const fx = insp.cam[0] - insp.look[0];
+    const fy = insp.cam[1] - insp.look[1];
+    const fz = insp.cam[2] - insp.look[2];
+    const fl = Math.hypot(fx, fz) || 1;
+    return {
+      insp,
+      dot: (fx / fl) * insp.face[0] + (fz / fl) * insp.face[2],
+      dist: Math.hypot(fx, fy, fz),
+      sub: document.querySelector('.zh')?.textContent || '',
+    };
+  });
+  console.log('face', JSON.stringify(face));
+  if (face.dot < 0.55) errors.push(`face camera not in front dot=${face.dot.toFixed(3)}`);
+  if (face.dist < 0.85 || face.dist > 3.2) errors.push(`face camera distance ${face.dist.toFixed(2)}`);
+  if (!face.sub) errors.push('face shot has no subtitle');
+  await shot('face');
+
+  for (const id of ['shadow', 'field']) {
+    await page.evaluate((lot) => window.__park.watch(lot, 'wide'), id);
+    await page.waitForTimeout(800);
+    console.log(id, JSON.stringify(await info()));
+    await shot(id);
+  }
+
+  await page.evaluate(() => {
+    window.__park.setTime(600);
+    window.__park.watch('stage', 'wide');
+  });
+  await page.waitForTimeout(1000);
+  console.log('crowd', JSON.stringify(await info()));
+  await shot('crowd');
+
+  await page.evaluate(() => {
+    window.__park.setTime(11 * 3600 + 12 * 60);
+    window.__park.watch('parade', 'wide');
+  });
+  await page.waitForTimeout(1200);
+  const paradeInfo = await info();
+  console.log('parade', JSON.stringify(paradeInfo));
+  if (!paradeInfo.shows.some((s) => s.lotId === 'parade')) errors.push('parade missing from listShows');
+  await shot('parade');
+}
+
 if (round === '1') {
   await page.evaluate(() => window.__park.frame('overview'));
   await shot('overview');

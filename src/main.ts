@@ -6,6 +6,7 @@ import { resolve } from './park/collide';
 import { LOTS, lotById, lotForward, lotRight, seatWorld } from './park/layout';
 import { SCORES } from './shows/scores';
 import { ActorShow } from './shows/ActorShow';
+import { ParadeShow } from './shows/ParadeShow';
 import { Crowd } from './crowd/Crowd';
 import { AudioBus } from './audio/AudioBus';
 import { Hud, type TagView } from './ui/Hud';
@@ -39,11 +40,12 @@ sun.position.set(18, 28, 12);
 scene.add(sun);
 
 const world = buildWorld(scene);
-const shows = SCORES.map((score) => {
-  const show = new ActorShow(score);
-  scene.add(show.group);
-  return show;
-});
+const parade = new ParadeShow();
+const shows: Array<ActorShow | ParadeShow> = [
+  ...SCORES.map((score) => new ActorShow(score)),
+  parade,
+];
+for (const show of shows) scene.add(show.group);
 const crowd = new Crowd(scene, world.boxes, world.ellipses);
 const audio = new AudioBus();
 
@@ -251,18 +253,26 @@ renderer.setAnimationLoop((now) => {
   player.group.position.copy(playerPos);
   player.group.rotation.y = playerYaw;
 
-  const nearest = nearestLot(playerPos.x, playerPos.z);
-  if (movingInput()) {
-    /* watch already cancelled */
-  } else if (!watchLock) {
-    if (nearest && nearest.d < nearest.lot.radius && showByLot(nearest.lot.id)) {
-      if (lingerLot !== nearest.lot.id) {
-        lingerLot = nearest.lot.id;
+  for (const show of shows) {
+    show.update(dt, parkTime, (cue) => {
+      if (cue.sfx) audio.hit(cue.sfx);
+      if (cue.react) crowd.react(show.lotId, cue.react);
+    }, playerPos);
+    show.focusWorld(head);
+    crowd.setFocus(show.lotId, head);
+  }
+  crowd.setParade(parade.billLive, parade.origin.x, parade.origin.z, parade.heading);
+
+  const nearest = nearestLive(playerPos.x, playerPos.z);
+  if (!movingInput() && !watchLock) {
+    if (nearest && nearest.d < lotById(nearest.show.lotId).radius) {
+      if (lingerLot !== nearest.show.lotId) {
+        lingerLot = nearest.show.lotId;
         linger = 0;
       }
       linger += dt;
       if (linger > 1.05) {
-        watchId = nearest.lot.id;
+        watchId = nearest.show.lotId;
         watchShot = 'cycle';
       }
     } else {
@@ -270,15 +280,6 @@ renderer.setAnimationLoop((now) => {
       lingerLot = null;
       watchId = null;
     }
-  }
-
-  for (const show of shows) {
-    show.update(dt, parkTime, (cue) => {
-      if (cue.sfx) audio.hit(cue.sfx);
-      if (cue.react) crowd.react(show.lotId, cue.react);
-    });
-    show.focusWorld(head);
-    crowd.setFocus(show.lotId, head);
   }
   const hot = new Map<string, boolean>();
   for (const show of shows) hot.set(show.lotId, true);
@@ -325,6 +326,7 @@ renderer.setAnimationLoop((now) => {
       desiredLook.z - Math.cos(camYaw) * horiz,
     );
   }
+  if (watched) nudgeCamera(desiredPos, desiredLook);
   const k = snapCam ? 1 : 1 - Math.exp(-dt * (watched || camOverride ? 3.2 : 6));
   camera.position.lerp(desiredPos, k);
   camLook.lerp(desiredLook, k);
@@ -336,20 +338,15 @@ renderer.setAnimationLoop((now) => {
     flag.rotation.y = Math.sin(t * 1.6 + i) * 0.35;
   });
 
-  const active = watched ?? (nearest && nearest.d < nearest.lot.radius + 2 ? showByLot(nearest.lot.id) : null);
+  const active = watched ?? (nearest && nearest.d < lotById(nearest.show.lotId).radius + 2 ? nearest.show : null);
   const line = active?.current ?? null;
-  const rows = [
-    ...shows.map((s) => ({
-      name: lotById(s.lotId).name,
-      title: s.title,
-      state: '演出中',
-      live: true,
-      here: nearest?.lot.id === s.lotId,
-    })),
-    { name: '皮影棚', title: '待灯', state: '午后', live: false, here: false },
-    { name: '校场', title: '试刃', state: '申时', live: false, here: false },
-    { name: '巡游道', title: '河灯巡游', state: '午时·筹备', live: false, here: false },
-  ];
+  const rows = shows.map((s) => ({
+    name: lotById(s.lotId).name,
+    title: s.title,
+    state: s.billState,
+    live: s.billLive,
+    here: nearest?.show.lotId === s.lotId,
+  }));
   const tags: TagView[] = [];
   for (const show of shows) {
     const near = playerPos.distanceTo(show.origin) < 16 || watchId === show.lotId;
@@ -399,13 +396,34 @@ renderer.setAnimationLoop((now) => {
   hook.ready = true;
 });
 
-function nearestLot(x: number, z: number) {
-  let best: { lot: (typeof LOTS)[number]; d: number } | null = null;
-  for (const lot of LOTS) {
-    const d = Math.hypot(lot.x - x, lot.z - z);
-    if (!best || d < best.d) best = { lot, d };
+function nearestLive(x: number, z: number) {
+  let best: { show: (typeof shows)[number]; d: number } | null = null;
+  for (const show of shows) {
+    if (!show.billLive) continue;
+    const d = Math.hypot(show.origin.x - x, show.origin.z - z);
+    if (!best || d < best.d) best = { show, d };
   }
   return best;
+}
+
+function nudgeCamera(pos: THREE.Vector3, look: THREE.Vector3) {
+  for (const b of world.boxes) {
+    const pad = 0.3;
+    if (pos.y > 3.6) continue;
+    if (pos.x <= b.minX - pad || pos.x >= b.maxX + pad || pos.z <= b.minZ - pad || pos.z >= b.maxZ + pad) continue;
+    const cx = (b.minX + b.maxX) / 2;
+    const cz = (b.minZ + b.maxZ) / 2;
+    let dx = pos.x - cx;
+    let dz = pos.z - cz;
+    if (Math.abs(dx) + Math.abs(dz) < 0.02) {
+      dx = pos.x - look.x;
+      dz = pos.z - look.z;
+    }
+    const len = Math.hypot(dx, dz) || 1;
+    const reach = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + pad + 0.15;
+    pos.x = cx + (dx / len) * reach;
+    pos.z = cz + (dz / len) * reach;
+  }
 }
 
 function resolveShot(shot: ShotKind | 'cycle', now: number): ShotKind {
@@ -414,18 +432,31 @@ function resolveShot(shot: ShotKind | 'cycle', now: number): ShotKind {
   return order[Math.floor(now / 7000) % order.length];
 }
 
-function frameShow(show: ActorShow, shot: ShotKind) {
+function frameShow(show: ActorShow | ParadeShow, shot: ShotKind) {
+  const focus = show.focusWorld(new THREE.Vector3());
+  const face = show.speakerForward(new THREE.Vector3());
+  face.y = 0;
+  if (face.lengthSq() < 1e-5) face.set(0, 0, 1);
+  else face.normalize();
+  if (shot === 'close') {
+    const look = focus.clone();
+    look.y += 0.12;
+    const pos = look.clone().addScaledVector(face, 1.62);
+    return { pos, look };
+  }
+  if (show instanceof ParadeShow) {
+    const fx = Math.sin(show.heading);
+    const fz = Math.cos(show.heading);
+    const look = show.origin.clone();
+    look.y = 1.25;
+    const back = shot === 'wide' ? 6.4 : 3.2;
+    const flank = shot === 'wide' ? 6.6 : 3.4;
+    const pos = new THREE.Vector3(look.x - fx * back + face.x * flank, shot === 'wide' ? 4.9 : 2.25, look.z - fz * back + face.z * flank);
+    return { pos, look };
+  }
   const lot = lotById(show.lotId);
   const fwd = lotForward(lot);
   const right = lotRight(lot);
-  const focus = show.focusWorld(new THREE.Vector3());
-  if (shot === 'close') {
-    const face = show.speakerForward(new THREE.Vector3());
-    const side = new THREE.Vector3(-face.z, 0, face.x);
-    const pos = focus.clone().addScaledVector(face, 1.15).addScaledVector(side, 0.22);
-    pos.y += 0.04;
-    return { pos, look: focus };
-  }
   const seat = seatWorld(lot);
   if (shot === 'three') {
     const pos = new THREE.Vector3(seat.x + right.x * 1.8, 1.9, seat.z + right.z * 1.8);

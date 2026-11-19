@@ -17,7 +17,16 @@ export type Gesture =
   | 'think'
   | 'offer'
   | 'wave'
-  | 'juggle';
+  | 'juggle'
+  | 'lunge'
+  | 'block'
+  | 'kneel'
+  | 'present'
+  | 'hush'
+  | 'stamp'
+  | 'flourish'
+  | 'nod'
+  | 'sway';
 export type PropName = 'none' | 'sword' | 'stick' | 'fan';
 
 export interface Drive {
@@ -50,10 +59,10 @@ const GEO = {
   lowerLeg: new THREE.BoxGeometry(0.1, 0.34, 0.1),
   foot: new THREE.BoxGeometry(0.1, 0.06, 0.18),
   head: new THREE.SphereGeometry(0.175, 14, 12),
-  eye: new THREE.SphereGeometry(0.03, 10, 8),
-  pupil: new THREE.SphereGeometry(0.014, 8, 6),
-  brow: new THREE.BoxGeometry(0.07, 0.014, 0.016),
-  mouth: new THREE.BoxGeometry(0.07, 0.018, 0.02),
+  eye: new THREE.SphereGeometry(0.038, 10, 8),
+  pupil: new THREE.SphereGeometry(0.018, 8, 6),
+  brow: new THREE.BoxGeometry(0.078, 0.018, 0.02),
+  mouth: new THREE.BoxGeometry(0.078, 0.02, 0.024),
   hair: new THREE.SphereGeometry(0.18, 12, 10),
   sash: new THREE.BoxGeometry(0.36, 0.06, 0.22),
   blob: new THREE.CircleGeometry(0.42, 14),
@@ -499,15 +508,35 @@ export class Puppet {
         this.spine.tx = 0.18;
         break;
       }
-      case 'listen':
-        this.idleArms();
-        this.armUL.tx = -0.55;
-        this.armUL.tz = 0.45;
-        this.armLL.tx = -1.55;
-        this.spine.tx = 0.14;
-        this.head.tz = 0.16;
-        if (Math.sin(t * 1.7) > 0.92) this.head.tx += 0.18;
+      case 'listen': {
+        const variant = Math.floor(this.seed * 10) % 3;
+        const nod = Math.sin(t * (1.15 + (this.seed % 1) * 0.4)) > 0.84 ? 0.22 : 0;
+        this.spine.ty = Math.sin(t * 0.55 + this.seed) * 0.07;
+        this.spine.tx = 0.08;
+        if (variant === 0) {
+          this.armUL.tx = -0.5;
+          this.armUL.tz = 0.5;
+          this.armLL.tx = -1.6;
+          this.armUR.tx = 0.18;
+          this.armUR.tz = -0.32;
+          this.armLR.tx = -0.45;
+          this.head.tz = 0.2;
+        } else if (variant === 1) {
+          this.armUL.tx = -0.95;
+          this.armUR.tx = -0.95;
+          this.armUL.tz = 0.38;
+          this.armUR.tz = -0.38;
+          this.armLL.tx = -1.4;
+          this.armLR.tx = -1.4;
+          this.head.tz = -0.12;
+        } else {
+          this.idleArms();
+          this.head.tz = 0.2;
+          this.head.ty = Math.sin(t * 0.45 + this.seed) * 0.14;
+        }
+        this.head.tx += nod;
         break;
+      }
       case 'think':
         this.idleArms();
         this.armUR.tx = -0.7;
@@ -542,6 +571,89 @@ export class Puppet {
         this.armLR.tx = -0.4;
         break;
       }
+      case 'lunge': {
+        const k = Math.sin(Math.min(u, 1) * Math.PI);
+        this.legUL.tx = -0.7 * k;
+        this.legLL.tx = 0.35 * k;
+        this.spine.tx = 0.28 * k;
+        this.spine.ty = -0.25 * k;
+        this.armUR.tx = -1.55;
+        this.armUR.ty = -0.35;
+        this.armLR.tx = -0.25;
+        this.armUL.tx = -0.35;
+        this.armUL.tz = 0.55;
+        this.armLL.tx = -1.1;
+        break;
+      }
+      case 'block':
+        this.armUL.tx = -1.15;
+        this.armUR.tx = -1.25;
+        this.armUL.tz = 0.15;
+        this.armUR.tz = -0.95;
+        this.armLL.tx = -1.35;
+        this.armLR.tx = -0.35;
+        this.spine.ty = -0.28;
+        this.spine.tx = 0.06;
+        this.head.ty = -0.12;
+        break;
+      case 'kneel':
+        this.spine.tx = 0.85;
+        this.head.tx = 0.32;
+        this.legUL.tx = 0.5;
+        this.legLL.tx = 1.05;
+        this.legUR.tx = 0.15;
+        this.armUL.tx = 0.45;
+        this.armUR.tx = 0.45;
+        this.armLL.tx = -0.3;
+        this.armLR.tx = -0.3;
+        break;
+      case 'present':
+        this.armUL.tx = -0.55;
+        this.armUR.tx = -1.55;
+        this.armUR.tz = -0.35;
+        this.armUL.tz = 0.2;
+        this.armLR.tx = -0.15;
+        this.armLL.tx = -0.7;
+        this.spine.ty = -0.18;
+        this.spine.tx = 0.05;
+        break;
+      case 'hush':
+        this.idleArms();
+        this.armUR.tx = -1.35;
+        this.armLR.tx = -2.15;
+        this.armUR.tz = -0.15;
+        this.head.tx = 0.1;
+        this.spine.tx = 0.08;
+        break;
+      case 'stamp':
+        this.armUL.tx = -0.35;
+        this.armUR.tx = -2.15;
+        this.armUR.tz = -0.2;
+        this.armLR.tx = -0.2;
+        this.armLL.tx = -0.5;
+        this.legUR.tx = Math.sin(t * 7) > 0 ? -0.35 : 0.15;
+        this.spine.tx = 0.1;
+        break;
+      case 'flourish':
+        this.idleArms();
+        this.armUR.tx = -1.15 + Math.sin(t * 4) * 0.55;
+        this.armUR.tz = -0.55;
+        this.armLR.tx = -0.55;
+        this.armLR.tz = Math.sin(t * 4) * 0.55;
+        this.spine.ty = Math.sin(t * 2) * 0.08;
+        break;
+      case 'nod':
+        this.idleArms();
+        this.head.tx = 0.32 * Math.max(0, Math.sin(t * 4.2));
+        this.spine.tx = 0.06;
+        break;
+      case 'sway':
+        this.idleArms();
+        this.spine.ty = Math.sin(t * 1.6) * 0.22;
+        this.chest.tz = Math.sin(t * 1.6) * 0.08;
+        this.armUL.tz = 0.42;
+        this.armUR.tz = -0.42;
+        break;
       default:
         this.idleArms();
     }
@@ -582,23 +694,25 @@ export class Puppet {
     this.eyeL.scale.y = lid;
     this.eyeR.scale.y = lid;
 
-    const open = drive.speaking > 0.05
-      ? drive.speaking * (0.45 + 0.55 * Math.abs(Math.sin(this.time * 14 + this.seed)))
-      : 0.04;
-    this.cavity.scale.y = 0.45 + open * 2.2;
-    this.lipU.position.y = -0.028 + open * 0.01;
-    this.lipD.position.y = -0.05 - open * 0.012;
-    const smile = drive.emotion === 'happy' ? 1.35 : drive.emotion === 'sad' ? 0.72 : drive.emotion === 'angry' ? 0.8 : 1;
+    const viseme = [0.2, 0.95, 0.4, 1, 0.25, 0.72, 0.5, 0.88];
+    const step = viseme[Math.floor(this.time * 10.5 + this.seed) % viseme.length];
+    const open = drive.speaking > 0.05 ? drive.speaking * step : 0.05;
+    this.cavity.scale.y = 0.35 + open * 3.4;
+    this.cavity.scale.x = 0.8 + open * 0.55;
+    this.lipU.position.y = -0.026 + open * 0.016;
+    this.lipD.position.y = -0.048 - open * 0.02;
+    this.lipD.scale.y = 1 + open * 1.6;
+    const smile = drive.emotion === 'happy' ? 1.45 : drive.emotion === 'sad' ? 0.62 : drive.emotion === 'angry' ? 0.72 : 1;
     this.lipU.scale.x = smile;
-    this.lipD.scale.x = smile;
+    this.lipD.scale.x = smile * (drive.emotion === 'sad' ? 0.85 : 1);
 
     const brows: Record<Emotion, { y: number; rot: number }> = {
-      neutral: { y: 0.135, rot: 0.08 },
-      happy: { y: 0.15, rot: -0.35 },
-      angry: { y: 0.12, rot: 0.55 },
-      sad: { y: 0.128, rot: -0.5 },
-      surprise: { y: 0.168, rot: 0.05 },
-      listen: { y: 0.148, rot: -0.18 },
+      neutral: { y: 0.138, rot: 0.06 },
+      happy: { y: 0.158, rot: -0.55 },
+      angry: { y: 0.112, rot: 0.85 },
+      sad: { y: 0.124, rot: -0.62 },
+      surprise: { y: 0.188, rot: 0.02 },
+      listen: { y: 0.156, rot: -0.28 },
     };
     const b = brows[drive.emotion];
     this.browL.position.y = b.y;
@@ -606,15 +720,19 @@ export class Puppet {
     this.browL.rotation.z = b.rot;
     this.browR.rotation.z = -b.rot;
 
-    const cheek = drive.emotion === 'happy' || drive.emotion === 'listen' ? 1 : 0.25;
+    const cheek = drive.emotion === 'happy' ? 1.15 : drive.emotion === 'listen' ? 0.7 : drive.emotion === 'surprise' ? 0.45 : 0.22;
     this.cheekL.scale.setScalar(cheek);
     this.cheekR.scale.setScalar(cheek);
 
     this.saccade -= dt;
     if (this.saccade <= 0) {
-      this.saccade = 1.2 + Math.random() * 1.6;
-      this.saccadeX = (Math.random() - 0.5) * 0.012;
-      this.saccadeY = (Math.random() - 0.5) * 0.008;
+      this.saccade = 0.7 + Math.random() * 1.5;
+      this.saccadeX = (Math.random() - 0.5) * 0.014;
+      this.saccadeY = (Math.random() - 0.5) * 0.01;
+    }
+    if (drive.lookAt) {
+      this.saccadeX *= 0.35;
+      this.saccadeY *= 0.35;
     }
   }
 
@@ -625,8 +743,8 @@ export class Puppet {
       const local = target.clone();
       this.head.pivot.worldToLocal(local);
       const len = local.length() || 1;
-      ox += clamp((local.x / len) * 0.02, -0.014, 0.014);
-      oy += clamp((local.y / len) * 0.015, -0.01, 0.01);
+      ox += clamp((local.x / len) * 0.034, -0.02, 0.02);
+      oy += clamp((local.y / len) * 0.026, -0.014, 0.014);
     }
     this.pupilL.position.set(ox, oy, 0.032);
     this.pupilR.position.set(ox, oy, 0.032);

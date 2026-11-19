@@ -25,10 +25,12 @@ Vite is pinned to `http://127.0.0.1:5199/` (`strictPort`). Open that URL. There 
 - **声音** in the corner starts a quiet Web Audio bed (drums and murmur). It stays muted until you turn it on.
 - Debug hook: `window.__park` (`ready`, `time` / `setTime`, `lots`, `teleport`, `watch`, `listShows`, `fps`, `player`, `face`, `frame`, `inspect`)
 
-Screenshots for a running dev server: `node tools/shots.mjs --round 1`.
+Screenshots for a running dev server: `node tools/shots.mjs --round 1` or `--round 2`.
 
 ## Status
 
-Round 1 is playable: a park you can walk, three shows looping on the clock (戏台《夜雨刀》, 茶棚《三杯茶》, 市井街《鼓边书》), guests, subtitles, and a bill that also lists later lots. See [docs/ROUND_1.md](docs/ROUND_1.md). Rounds 2 and 3 add the remaining show types, crowds, phone controls, and a diagnostics overlay.
+Round 1 is playable: a park you can walk, with guests, subtitles, and a show camera. See [docs/ROUND_1.md](docs/ROUND_1.md).
+
+Round 2 adds the rest of the park mix. Five scores loop all day — 戏台《夜雨刀》, 茶棚《三杯茶》, 市井街《鼓边书》, 皮影棚《灯下鹤》, 校场《试刃》 — and 巡游道《河灯巡游》 runs at 午时 11:00 and 申时 15:00 (park clock). `setTime` jumps the parade. Guests gather, clap, and trail the float. See [docs/ROUND_2.md](docs/ROUND_2.md). Round 3 is phone controls, a diagnostics overlay, and a lighter crowd.
 
 This repository is not deployed. GitHub Pages is intentionally off.

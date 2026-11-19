@@ -110,6 +110,89 @@ export const SCORES: Score[] = [
       },
     ],
   },
+  {
+    id: 'lamp-crane',
+    title: '灯下鹤',
+    titleEn: 'Crane Behind the Lamp',
+    lotId: 'shadow',
+    duration: 28,
+    phase: 2,
+    lookMode: 'audience',
+    groundY: 0,
+    roles: [
+      { id: 'deng', name: '灯师', robe: 0x8a3a22, pants: 0x2a1c14, hair: 0x1a100c, hat: 'cap', prop: 'stick', home: [-2.35, 1.15] },
+      { id: 'bai', name: '白叙述', robe: 0xf0e2c8, pants: 0x3a342c, hair: 0x2a1c14, hat: 'scholar', prop: 'fan', home: [2.25, 1.35] },
+    ],
+    lines: [
+      { t: 0, role: 'bai', text: '灯一点，布就成了夜。今晚的客人是一只鹤。', en: 'Light the lamp, and the cloth becomes night. Tonight’s guest is a crane.', gesture: 'present', emotion: 'happy' },
+      { t: 5, role: 'deng', text: '鹤不说话。它用翅膀把月亮掀开一条缝。', en: 'The crane does not speak. Its wing lifts a seam in the moon.', gesture: 'raise', emotion: 'listen', sfx: 'wood' },
+      { t: 10, role: 'bai', text: '船夫问：你是来渡人，还是来渡光？', en: 'The boatman asks: did you come to ferry people, or to ferry light?', gesture: 'talk', emotion: 'neutral', look: 'deng' },
+      { t: 15, role: 'deng', text: '（灯芯爆了一下，鹤低下头。）都渡。只要你站住。', en: '(The wick pops. The crane bows.) Both — if you stay standing.', gesture: 'hush', emotion: 'sad', react: 'clap' },
+      { t: 20, role: 'bai', text: '看，影子比人先鞠躬。', en: 'Look — the shadow bows before the person does.', gesture: 'bow', emotion: 'listen', look: 'audience' },
+      { t: 24, role: 'deng', text: '下一场还是这盏灯。鹤若回来，替我鼓掌。', en: 'Same lamp next time. If the crane returns, clap for me.', gesture: 'wave', emotion: 'happy', react: 'cheer' },
+    ],
+    alts: [
+      {
+        line: 1,
+        options: [
+          { text: '鹤不说话。它用翅膀把月亮掀开一条缝。', en: 'The crane does not speak. Its wing lifts a seam in the moon.', gesture: 'raise', emotion: 'listen' },
+          { text: '今天的鹤腿有点慢。灯不催它。', en: 'Today the crane is a little slow. The lamp does not rush it.', gesture: 'talk', emotion: 'happy' },
+          { text: '你若眨眼，鹤就换了一只翅膀。', en: 'Blink, and the crane has switched wings.', gesture: 'flourish', emotion: 'surprise' },
+        ],
+      },
+      {
+        line: 4,
+        options: [
+          { text: '看，影子比人先鞠躬。', en: 'Look — the shadow bows before the person does.', gesture: 'bow', emotion: 'listen' },
+          { text: '布上的人没有脸。所以你把自己的脸借给它。', en: 'The figure on the cloth has no face. So you lend it yours.', gesture: 'present', emotion: 'neutral' },
+          { text: '船靠岸了。灯还没靠岸。', en: 'The boat has landed. The lamp has not.', gesture: 'point', emotion: 'sad' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'trial-cut',
+    title: '试刃',
+    titleEn: 'The Trial Cut',
+    lotId: 'field',
+    duration: 32,
+    phase: 8,
+    lookMode: 'group',
+    groundY: 0,
+    roles: [
+      { id: 'guan', name: '试官', robe: 0x2a3148, pants: 0x1c2030, hair: 0x3a3028, hat: 'scholar', home: [0.1, 3.15] },
+      { id: 'jia', name: '甲', robe: 0xd7d2c6, pants: 0x243044, hair: 0x1a1a1a, hat: 'ribbon', prop: 'sword', home: [-1.7, 1.55] },
+      { id: 'yi', name: '乙', robe: 0xa32d2d, pants: 0x2a1614, hair: 0x140c0c, hat: 'cap', prop: 'sword', home: [1.75, 1.45] },
+    ],
+    lines: [
+      { t: 0, role: 'guan', text: '校场不记名。只记谁先收脚。', en: 'The field keeps no names. Only who recovers their footing first.', gesture: 'talk', emotion: 'neutral' },
+      { t: 5, role: 'jia', text: '试刃，不试命。刀口朝外。', en: 'We test the edge, not a life. The edge stays outward.', gesture: 'guard', emotion: 'listen', x: -1.15, z: 1.7, look: 'yi' },
+      { t: 9, role: 'yi', text: '那你就进半步。我看你的肩。', en: 'Then take half a step. I am watching your shoulder.', gesture: 'point', emotion: 'angry', x: 1.2, z: 1.65, look: 'jia' },
+      { t: 13, role: 'jia', text: '半步到了。', en: 'Half a step.', gesture: 'lunge', emotion: 'neutral', x: -0.25, z: 1.85, sfx: 'wood', look: 'yi' },
+      { t: 17, role: 'yi', text: '接住。没响的那一下才算数。', en: 'Caught. The blow that makes no sound is the one that counts.', gesture: 'block', emotion: 'angry', x: 0.45, z: 1.7, sfx: 'wood', react: 'cheer', look: 'jia' },
+      { t: 21, role: 'jia', text: '再来。这次换你进。', en: 'Again. Your turn to enter.', gesture: 'slash', emotion: 'neutral', x: -0.55, z: 1.5, look: 'yi' },
+      { t: 25, role: 'guan', text: '停。脚还在圈里，刃已经试完。', en: 'Stop. Your feet are still in the ring. The edge has been tested.', gesture: 'raise', emotion: 'happy', react: 'clap' },
+      { t: 29, role: 'yi', text: '收势。下一轮，谁先鞠躬谁先选边。', en: 'Recover. Next round, whoever bows first picks a side.', gesture: 'kneel', emotion: 'listen', x: 1.5, z: 1.4, look: 'guan' },
+    ],
+    alts: [
+      {
+        line: 0,
+        options: [
+          { text: '校场不记名。只记谁先收脚。', en: 'The field keeps no names. Only who recovers their footing first.', gesture: 'talk', emotion: 'neutral' },
+          { text: '今日不点到。点到的是影子。', en: 'No roll call today. The roll is for the shadows.', gesture: 'point', emotion: 'listen' },
+          { text: '尘土比鼓诚实。你踩实了，它才响。', en: 'Dust is more honest than a drum. It only sounds when you commit.', gesture: 'stamp', emotion: 'neutral' },
+        ],
+      },
+      {
+        line: 6,
+        options: [
+          { text: '停。脚还在圈里，刃已经试完。', en: 'Stop. Your feet are still in the ring. The edge has been tested.', gesture: 'raise', emotion: 'happy' },
+          { text: '可以了。观众若鼓掌，算你们打平。', en: 'Enough. If the crowd claps, call it a draw.', gesture: 'wave', emotion: 'happy' },
+          { text: '收刀。木桩还在，人不必倒。', en: 'Sheathe them. The posts are still standing. People need not fall.', gesture: 'hush', emotion: 'listen' },
+        ],
+      },
+    ],
+  },
 ];
 
 export function scoreById(id: string) {

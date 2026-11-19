@@ -4,6 +4,7 @@ import { resolveLines } from './improv';
 import { Puppet, type Drive, type Emotion, type Gesture, type PropName } from '../puppet/Puppet';
 import { lotById, localToWorld } from '../park/layout';
 import { clamp, wrapAngle } from '../util';
+import { ShadowCloth } from './ShadowCloth';
 
 interface Actor {
   roleId: string;
@@ -34,6 +35,11 @@ export class ActorShow {
   private readonly audience = new THREE.Vector3();
   current: LineCue | null = null;
   speakerName = '';
+  billLive = true;
+  billState = '演出中';
+  private viewer: THREE.Vector3 | null = null;
+  private readonly fill: THREE.PointLight;
+  private readonly cloth: ShadowCloth | null;
 
   constructor(score: Score) {
     this.score = score;
@@ -71,15 +77,16 @@ export class ActorShow {
       });
     }
 
-    this.spot = new THREE.SpotLight(0xffe2b8, 0, 16, 0.55, 0.5, 1);
+    this.spot = new THREE.SpotLight(0xffe2b8, 0, 18, 0.48, 0.45, 1);
     this.spot.position.set(0.4, 5.4, 1.2);
     this.spotTarget = new THREE.Object3D();
     this.spotTarget.position.set(0, 1.5, 0.4);
     this.spot.target = this.spotTarget;
     this.group.add(this.spot, this.spotTarget);
-    const fill = new THREE.PointLight(0xffc48a, 0.35, 8, 1.4);
-    fill.position.set(0, 2.2, 1.4);
-    this.group.add(fill);
+    this.fill = new THREE.PointLight(0xffc48a, 0.45, 7, 1.6);
+    this.fill.position.set(0, 2.1, 2.2);
+    this.group.add(this.fill);
+    this.cloth = score.lotId === 'shadow' ? new ShadowCloth(this.group) : null;
   }
 
   get showT() {
@@ -114,7 +121,8 @@ export class ActorShow {
     }));
   }
 
-  update(dt: number, parkTime: number, onCue: (cue: LineCue) => void) {
+  update(dt: number, parkTime: number, onCue: (cue: LineCue) => void, viewer: THREE.Vector3 | null = null) {
+    this.viewer = viewer;
     this.group.updateMatrixWorld(true);
     const abs = parkTime / 60 + this.score.phase;
     const loop = Math.floor(abs / this.score.duration);
@@ -167,8 +175,12 @@ export class ActorShow {
 
       const span = this.lineSpan(line);
       const since = line ? this.showTime - line.t : 0;
-      const talkWindow = Math.min(2.6, span * 0.72);
-      const speakingAmt = speaking && since < talkWindow ? 1 - since / talkWindow * 0.25 : 0;
+      const talkWindow = Math.min(span * 0.86, Math.max(1.6, span - 0.25));
+      let speakingAmt = 0;
+      if (speaking && since >= 0 && since < talkWindow) {
+        const tail = talkWindow * 0.22;
+        speakingAmt = since > talkWindow - tail ? (talkWindow - since) / tail : 1;
+      }
 
       const gesture: Gesture = speaking && line ? line.gesture : 'listen';
       const emotion: Emotion = speaking && line ? line.emotion : 'listen';
@@ -184,13 +196,19 @@ export class ActorShow {
     }
 
     if (speaker) {
-      this.spotTarget.position.set(speaker.x, this.score.groundY + 1.45, speaker.z);
-      const want = 18;
+      this.spotTarget.position.set(speaker.x, this.score.groundY + 1.5, speaker.z);
+      this.spot.position.set(speaker.x * 0.35, 5.1, speaker.z + 1.35);
+      this.fill.position.set(speaker.x, this.score.groundY + 1.7, speaker.z + 1.55);
+      const gel = line?.emotion === 'angry' ? 0xff9868 : line?.emotion === 'sad' ? 0xc8d4ff : 0xffe2b8;
+      const want = 24;
       this.spot.intensity += (want - this.spot.intensity) * clamp(dt * 3, 0, 1);
-      this.spot.color.set(line?.emotion === 'angry' ? 0xffb090 : 0xffe2b8);
+      this.spot.color.set(gel);
+      this.fill.color.set(gel);
+      this.fill.intensity = 0.55;
     } else {
       this.spot.intensity += (4 - this.spot.intensity) * clamp(dt * 2, 0, 1);
     }
+    this.cloth?.update(this.showTime);
   }
 
   private lineSpan(line: LineCue | null) {
@@ -206,6 +224,11 @@ export class ActorShow {
 
   private lookTarget(actor: Actor, speaker: Actor | null, line: LineCue | null) {
     const mode = line?.look;
+    const scriptedPartner = !!mode && mode !== 'audience';
+    if (!scriptedPartner && speaker === actor) {
+      const glance = this.frontRowGlance();
+      if (glance) return glance;
+    }
     if (mode && mode !== 'audience') {
       const other = this.actors.find((a) => a.roleId === mode);
       if (other && other !== actor) {
@@ -231,5 +254,17 @@ export class ActorShow {
       }
     }
     return this.audience.clone();
+  }
+
+  /** Occasional look toward a visitor standing in the front rows. */
+  private frontRowGlance() {
+    if (!this.viewer) return null;
+    const local = this.group.worldToLocal(this.viewer.clone());
+    if (local.z < 2.3 || local.z > 8.6 || Math.abs(local.x) > 3.5) return null;
+    const beat = Math.sin(this.showTime * 0.9 + this.score.phase);
+    if (beat < 0.2) return null;
+    const at = this.viewer.clone();
+    at.y = 1.5;
+    return at;
   }
 }

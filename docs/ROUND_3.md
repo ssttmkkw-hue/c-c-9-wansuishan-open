@@ -2,7 +2,7 @@
 
 ## Commit
 
-Recorded in the following docs commit after this change lands on `main`.
+- `8f226d6` feat: phone controls, guest LOD, and a diagnostics overlay
 
 ## What shipped
 

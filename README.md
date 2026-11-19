@@ -15,16 +15,20 @@ npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (default `http://localhost:5199/`).
+Vite is pinned to `http://127.0.0.1:5199/` (`strictPort`). Open that URL. There is no API key and no `.env`. After the page loads, the park runs offline.
 
-- Move: WASD or arrow keys, or the on-screen stick on a phone
-- Look: mouse drag / touch drag
+- Move: WASD or arrow keys
+- Look: drag the mouse
 - Sprint: Shift
-- Stop near a show to watch (the camera eases toward the stage)
-- `?diag=1` opens a small diagnostics overlay
+- Stand inside a lot for about a second and the camera eases into the show. Walk to cancel.
+- Subtitles are always on for the show you are nearest. Speech synthesis is not used.
+- **声音** in the corner starts a quiet Web Audio bed (drums and murmur). It stays muted until you turn it on.
+- Debug hook: `window.__park` (`ready`, `time` / `setTime`, `lots`, `teleport`, `watch`, `listShows`, `fps`, `player`, `face`, `frame`, `inspect`)
+
+Screenshots for a running dev server: `node tools/shots.mjs --round 1`.
 
 ## Status
 
-Work is iterated in rounds. Notes live in `docs/ROUND_1.md`, `docs/ROUND_2.md`, `docs/ROUND_3.md` as they land.
+Round 1 is playable: a park you can walk, three shows looping on the clock (戏台《夜雨刀》, 茶棚《三杯茶》, 市井街《鼓边书》), guests, subtitles, and a bill that also lists later lots. See [docs/ROUND_1.md](docs/ROUND_1.md). Rounds 2 and 3 add the remaining show types, crowds, phone controls, and a diagnostics overlay.
 
 This repository is not deployed. GitHub Pages is intentionally off.

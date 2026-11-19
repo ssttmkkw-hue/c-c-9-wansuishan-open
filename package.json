@@ -1,0 +1,21 @@
+{
+  "name": "wansuishan-open",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5199 --host 127.0.0.1 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --port 5199 --host 127.0.0.1 --strictPort",
+    "shots": "node tools/shots.mjs"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0",
+    "typescript": "5.6.3",
+    "vite": "6.0.3"
+  }
+}

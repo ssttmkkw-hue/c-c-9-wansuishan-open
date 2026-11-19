@@ -65,6 +65,8 @@ We did **not** start from the author's earlier English-sim or stage-play reposit
 
 **Takeaway:** start with a waypoint graph on park paths and Yuka-style steering (either the library or a thin reimplementation). Use InstancedMesh (or a two-LOD scheme: expressive puppets near the camera / instanced billboards or capsules in the distance). Revisit recast if path quality becomes the bottleneck.
 
+Round 1 chose the thin reimplementation: seek, arrive, and separation on a hand-authored waypoint loop, plus fixed spectator slots in front of each live lot. That keeps the runtime dependency list to three.js. Yuka remains a fine later swap if navigation gets more complicated than the park paths. Instanced meshes are used for path stones and trees; guests are still individual puppets until the performance pass.
+
 ## 4. Web theater, puppetry, and expressiveness
 
 Earlier stage-play attempts felt stiff: bodies frozen on the last gesture, faces that do not listen, cameras that do not care who is speaking. These projects point at better habits.

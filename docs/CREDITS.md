@@ -4,13 +4,18 @@ This project is MIT-licensed (see `/LICENSE`). Third-party code and assets may o
 
 The implementation round should extend this file whenever a dependency or asset is added.
 
-## Code we intend to depend on
+## Dependencies
 
-| Work | License | Notes |
-| --- | --- | --- |
-| [three.js](https://github.com/mrdoob/three.js) | MIT | 3D renderer, planned. |
-| [Vite](https://github.com/vitejs/vite) | MIT | Dev server and bundler, planned. |
-| [Yuka](https://github.com/Mugen87/yuka) | MIT | Optional steering / game AI. Only list a version here if it is actually imported. |
+| Work | URL | License | How it is used |
+| --- | --- | --- | --- |
+| three.js 0.170.0 | https://github.com/mrdoob/three.js | MIT | Renderer, scene graph, lights, and math. |
+| @types/three 0.170.0 | https://github.com/three-types/three-ts-types | MIT | TypeScript declarations for the pinned three.js release. Not shipped to the browser. |
+| Vite 6.0.3 | https://github.com/vitejs/vite | MIT | Dev server and bundler. |
+| TypeScript 5.6.3 | https://github.com/microsoft/TypeScript | Apache-2.0 | Typecheck only. |
+
+Yuka is not imported. Guest steering is a small original seek / arrive / separation loop, written for this repo. Playwright is used from a local tool install and is not a dependency of this package.
+
+No font files are vendored. The UI asks for Noto Sans / Noto Serif CJK when the operating system already has them (SIL Open Font License), and falls back to generic sans-serif.
 
 ## Inspiration (ideas only, no code copied)
 

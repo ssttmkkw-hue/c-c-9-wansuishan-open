@@ -2,7 +2,7 @@
 
 ## Commit
 
-Recorded in the following docs commit after this change lands on `main`.
+- `e2b7e84` feat: add the shadow booth, martial field, and scheduled parade
 
 ## What shipped
 
